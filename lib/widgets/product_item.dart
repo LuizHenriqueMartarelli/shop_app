@@ -11,6 +11,8 @@ class ProductItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scaffoldMessanger = ScaffoldMessenger.of(context);
+
     return ListTile(
       leading: CircleAvatar(
         backgroundImage: NetworkImage(product.imageUrl),
@@ -49,10 +51,16 @@ class ProductItem extends StatelessWidget {
                   ),
                 );
 
-                confirmDelete.then((value) {
+                confirmDelete.then((value) async {
                   if (value == true)
-                    Provider.of<Products>(context, listen: false)
-                        .deleteProduct(product.id);
+                    try {
+                      await Provider.of<Products>(context, listen: false)
+                          .deleteProduct(product.id);
+                    } catch (error) {
+                      scaffoldMessanger.showSnackBar(
+                        SnackBar(content: Text(error.toString())),
+                      );
+                    }
                 });
               },
               icon: Icon(Icons.delete),
