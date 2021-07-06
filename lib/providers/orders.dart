@@ -22,6 +22,10 @@ class Order {
 
 class Orders with ChangeNotifier {
   List<Order> _items = [];
+  String? _token;
+  String? _userId;
+
+  Orders([this._token, this._items = const [], this._userId]);
 
   List<Order> get items {
     return [..._items];
@@ -34,7 +38,7 @@ class Orders with ChangeNotifier {
   Future<void> addOrder(Cart cart) async {
     final date = DateTime.now();
     await http.post(
-      AppKeys.orders(null),
+      AppKeys.orders(_token, _userId),
       body: json.encode({
         "total": cart.totalAmount,
         "date": date.toIso8601String(),
@@ -67,7 +71,7 @@ class Orders with ChangeNotifier {
 
   Future<void> loadOrders() async {
     final List<Order> loadedItem = [];
-    final response = await http.get(AppKeys.orders(null));
+    final response = await http.get(AppKeys.orders(_token, _userId));
     Map<String, dynamic>? data = json.decode(response.body);
 
     if (data != null) {

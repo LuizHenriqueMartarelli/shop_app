@@ -8,6 +8,10 @@ import 'package:shop_app/providers/product.dart';
 
 class Products with ChangeNotifier {
   List<Product> _items = [];
+  String? _token;
+  String? _userId;
+
+  Products([this._token, this._items = const [], this._userId]);
 
   List<Product> get allItems => [..._items];
 
@@ -20,7 +24,7 @@ class Products with ChangeNotifier {
 
   Future<void> addProduct(Product newProduct) async {
     final response = await http.post(
-      AppKeys.products(null),
+      AppKeys.products(null, _token),
       body: json.encode(
         {
           'title': newProduct.title,
@@ -51,7 +55,7 @@ class Products with ChangeNotifier {
     if (index == -1) return;
 
     await http.patch(
-      AppKeys.products(product.id),
+      AppKeys.products(product.id, _token),
       body: json.encode(
         {
           'title': product.title,
@@ -73,7 +77,7 @@ class Products with ChangeNotifier {
     _items.removeWhere((prod) => prod.id == id);
     notifyListeners();
 
-    final response = await http.delete(AppKeys.products(id));
+    final response = await http.delete(AppKeys.products(id, _token));
     if (response.statusCode >= 400) {
       _items.insert(index, product);
       notifyListeners();
@@ -82,45 +86,33 @@ class Products with ChangeNotifier {
   }
 
   Future<void> loadingProducts() async {
-    final response = await http.get(AppKeys.products(null));
-    Map<String, dynamic>? _data = json.decode(response.body);
+    final response = await http.get(AppKeys.products(null, _token));
 
     _items.clear();
-    if (_data != null) {
-      _data.forEach((productId, productData) {
-        _items.add(
-          Product(
-            id: productId,
-            title: productData['title'],
-            description: productData['description'],
-            price: productData['price'],
-            imageUrl: productData['imageUrl'],
-            isFavorite: productData['isFavorite'],
-          ),
-        );
-      });
-      notifyListeners();
-    }
+    if (response.statusCode < 300) {
+      Map<String, dynamic>? _data = json.decode(response.body);
+      final favResponse =
+          await http.get(AppKeys.getFavorite(token: _token!, userId: _userId!));
+      final favMap = json.decode(favResponse.body);
 
+      if (_data != null) {
+        _data.forEach((productId, productData) {
+          final bool isFavorite =
+              favMap == null ? false : favMap[productId] ?? false;
+          _items.add(
+            Product(
+              id: productId,
+              title: productData['title'],
+              description: productData['description'],
+              price: productData['price'],
+              imageUrl: productData['imageUrl'],
+              isFavorite: isFavorite,
+            ),
+          );
+        });
+        notifyListeners();
+      }
+    }
     return Future.value();
   }
 }
-
-// bool _showFavoriteOnly = false;
-//
-// List<Product> get items {
-//   if (_showFavoriteOnly)
-//     return _items.where((prod) => prod.isFavorite).toList();
-
-//   return [..._items];
-// }
-
-// void showFavoriteOnly() {
-//   _showFavoriteOnly = true;
-//   notifyListeners();
-// }
-
-// void showAll() {
-//   _showFavoriteOnly = false;
-//   notifyListeners();
-// }
