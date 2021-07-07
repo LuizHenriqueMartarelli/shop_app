@@ -13,12 +13,47 @@ class AuthCard extends StatefulWidget {
   _AuthCardState createState() => _AuthCardState();
 }
 
-class _AuthCardState extends State<AuthCard> {
+class _AuthCardState extends State<AuthCard>
+    with SingleTickerProviderStateMixin {
   GlobalKey<FormState> _form = GlobalKey();
   bool _isLoading = false;
   AuthMode _authMode = AuthMode.Login;
   final _passwordController = TextEditingController();
   Map<String, String?> _authData = {'email': '', 'password': ''};
+
+  AnimationController? _controler;
+  Animation<double>? _opacityAnimation;
+  Animation<Offset>? _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controler = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 400),
+    );
+
+    _opacityAnimation = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(parent: _controler!, curve: Curves.linear),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: Offset(0, -1.5),
+      end: Offset(0, 0),
+    ).animate(
+      CurvedAnimation(parent: _controler!, curve: Curves.linear),
+    );
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _controler?.dispose();
+  }
 
   void _showErrorDialog(String msg) {
     showDialog(
@@ -68,10 +103,12 @@ class _AuthCardState extends State<AuthCard> {
       setState(() {
         _authMode = AuthMode.Singup;
       });
+      _controler?.forward();
     } else {
       setState(() {
         _authMode = AuthMode.Login;
       });
+      _controler?.reverse();
     }
   }
 
@@ -81,7 +118,9 @@ class _AuthCardState extends State<AuthCard> {
 
     return Card(
       elevation: 8.0,
-      child: Container(
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 400),
+        curve: Curves.linear,
         height: _authMode == AuthMode.Login ? 290 : 371,
         width: deviceSize.width * .75,
         padding: const EdgeInsets.all(16),
@@ -119,27 +158,40 @@ class _AuthCardState extends State<AuthCard> {
                 },
                 onSaved: (value) => _authData['password'] = value,
               ),
-              if (_authMode == AuthMode.Singup)
-                TextFormField(
-                  decoration: InputDecoration(labelText: 'Confirmar Senha'),
-                  keyboardType: TextInputType.visiblePassword,
-                  obscureText: true,
-                  validator: _authMode == AuthMode.Singup
-                      ? (value) {
-                          if (value == null ||
-                              value.trim().isEmpty ||
-                              value.trim().length < 6) {
-                            return 'Informe uma Senha válida';
-                          }
-
-                          if (value != _passwordController.text) {
-                            return "As senhas são diferentes!";
-                          }
-
-                          return null;
-                        }
-                      : null,
+              AnimatedContainer(
+                constraints: BoxConstraints(
+                  minHeight: _authMode == AuthMode.Singup ? 60 : 0,
+                  maxHeight: _authMode == AuthMode.Singup ? 120 : 0,
                 ),
+                duration: Duration(milliseconds: 400),
+                curve: Curves.linear,
+                child: FadeTransition(
+                  opacity: _opacityAnimation!,
+                  child: SlideTransition(
+                    position: _slideAnimation!,
+                    child: TextFormField(
+                      decoration: InputDecoration(labelText: 'Confirmar Senha'),
+                      keyboardType: TextInputType.visiblePassword,
+                      obscureText: true,
+                      validator: _authMode == AuthMode.Singup
+                          ? (value) {
+                              if (value == null ||
+                                  value.trim().isEmpty ||
+                                  value.trim().length < 6) {
+                                return 'Informe uma Senha válida';
+                              }
+
+                              if (value != _passwordController.text) {
+                                return "As senhas são diferentes!";
+                              }
+
+                              return null;
+                            }
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
               Spacer(),
               _isLoading
                   ? CircularProgressIndicator()
